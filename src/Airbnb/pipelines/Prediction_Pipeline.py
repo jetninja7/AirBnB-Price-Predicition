@@ -91,7 +91,6 @@ class CustomData:
                 'beds': [self.beds]
             }
             df = pd.DataFrame(custom_data_input_dict)
-            df = np.reshape(df, (19,))
             logging.info('Dataframe Gathered')
             return df
         except Exception as e:

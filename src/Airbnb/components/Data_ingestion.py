@@ -20,7 +20,7 @@ class DataIngestion:
     def initiate_data_ingestion(self):
         logging.info("Data ingestion started")
         try:
-            data = pd.read_csv("Notebook_Experiments\Data\Airbnb_Data.csv")
+            data = pd.read_csv(r"Notebook_Experiments\Data\Airbnb_Data.csv")
             logging.info("Read the Data from the csv file")
 
             os.makedirs(os.path.dirname(os.path.join(self.ingestion_config.raw_data_path)), exist_ok=True)
@@ -37,9 +37,8 @@ class DataIngestion:
             logging.info("Data ingestion completed")
 
             return (
-
-                self.ingestion_config.test_data_path,
-                self.ingestion_config.train_data_path
+                self.ingestion_config.train_data_path,
+                self.ingestion_config.test_data_path
             )
         except Exception as e:
             logging.info("Excpetion occured while ingesting the data")

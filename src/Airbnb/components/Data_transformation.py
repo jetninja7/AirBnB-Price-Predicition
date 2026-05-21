@@ -9,7 +9,6 @@ from src.Airbnb.exception import customexception
 from src.Airbnb.logger import logging
 
 from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder,StandardScaler
 
@@ -38,7 +37,7 @@ class DataTransformation:
             property_type_cat = ['Apartment', 'House', 'Condominium', 'Townhouse', 'Loft', 'Other', 'Guesthouse', 'Bed & Breakfast', 'Bungalow', 'Villa', 'Dorm', 'Guest suite', 'Camper/RV', 'Timeshare', 'Cabin', 'In-law', 'Hostel', 'Boutique hotel', 'Boat', 'Serviced apartment', 'Tent', 'Castle', 'Vacation home', 'Yurt', 'Hut', 'Treehouse', 'Chalet', 'Earth House', 'Tipi', 'Train', 'Cave', 'Casa particular', 'Parking Space', 'Lighthouse', 'Island']
             room_type_cat = ['Entire home/apt', 'Private room', 'Shared room']
             bed_type_cat = ['Real Bed', 'Futon', 'Pull-out Sofa', 'Airbed', 'Couch']
-            cancellation_policy_cat = ['strict', 'moderate', 'flexible', 'super_strict_30', 'super_strict_60'],
+            cancellation_policy_cat = ['strict', 'moderate', 'flexible', 'super_strict_30', 'super_strict_60']
             cleaning_fee_cat = ['True', 'False']
             city_cat = ['NYC', 'SF', 'DC', 'LA', 'Chicago', 'Boston']
             host_has_profile_pic_cat = ['t', 'f']
@@ -50,14 +49,12 @@ class DataTransformation:
             ## Numerical Pipeline
             num_pipeline=Pipeline(
                 steps=[
-                ('imputer',SimpleImputer(strategy='median')),
                 ('scaler',StandardScaler())])
             
             # Categorigal Pipeline
             cat_pipeline=Pipeline(
                 steps=[
-                ('imputer',SimpleImputer(strategy='most_frequent')),
-                ('ordinalencoder',OrdinalEncoder(categories=[property_type_cat, room_type_cat, bed_type_cat, cancellation_policy_cat, cleaning_fee_cat, city_cat, host_has_profile_pic_cat, host_identity_verified_cat, instant_bookable_cat])),
+                ('ordinalencoder',OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)),
                 ('scaler',StandardScaler())])
             
             preprocessor=ColumnTransformer([
@@ -82,11 +79,28 @@ class DataTransformation:
             logging.info(f'Test Dataframe Head : \n{test_df.head().to_string()}')
             
             preprocessing_obj = self.get_data_transformation()
+            numerical_cols = ['amenities','accommodates','bathrooms','latitude','longitude','host_response_rate','number_of_reviews','review_scores_rating','bedrooms','beds']
+            categorical_cols = ['property_type','room_type','bed_type','cancellation_policy','cleaning_fee','city','host_identity_verified','instant_bookable','host_has_profile_pic']
 
-            train_df['host_response_rate'] = train_df['host_response_rate'][train_df['host_response_rate'].notna()].str.replace('%', '').astype(int)
+            train_df['host_response_rate'] = pd.to_numeric(
+                train_df['host_response_rate'].astype(str).str.replace('%', '', regex=False),
+                errors='coerce'
+            )
+            test_df['host_response_rate'] = pd.to_numeric(
+                test_df['host_response_rate'].astype(str).str.replace('%', '', regex=False),
+                errors='coerce'
+            )
 
-            # Convert only non-null values in the test_df
-            test_df['host_response_rate'] = test_df['host_response_rate'][test_df['host_response_rate'].notna()].str.replace('%', '').astype(int)
+            for column in numerical_cols:
+                train_df[column] = pd.to_numeric(train_df[column], errors='coerce')
+                test_df[column] = pd.to_numeric(test_df[column], errors='coerce')
+                train_median = train_df[column].median()
+                train_df[column] = train_df[column].fillna(train_median)
+                test_df[column] = test_df[column].fillna(train_median)
+
+            for column in categorical_cols:
+                train_df[column] = train_df[column].fillna(train_df[column].mode(dropna=True)[0])
+                test_df[column] = test_df[column].fillna(train_df[column].mode(dropna=True)[0])
 
             logging.info("Host Response Rate converted to int")
             
@@ -99,11 +113,11 @@ class DataTransformation:
             test_df['amenities'] = [len(str(amenity).split(',')) for amenity in test_df['amenities']]
 
 
-            input_feature_train_df = train_df.drop(columns=drop_columns,axis=1)
+            input_feature_train_df = train_df.drop(columns=drop_columns)
             target_feature_train_df=train_df[target_column_name]
             
             
-            input_feature_test_df=test_df.drop(columns=drop_columns,axis=1)
+            input_feature_test_df=test_df.drop(columns=drop_columns)
             target_feature_test_df=test_df[target_column_name]
 
 
